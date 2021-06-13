@@ -458,6 +458,9 @@ EMOJI_CHAR_OR_NAME_REGEX = re.compile(EMOJI_CHAR_OR_NAME_REGEX_STRING)
 THREAD_TAG_STRING = r"^.?\[([a-z0-9\-]+)\]"
 THREAD_TAG_REGEX = re.compile(THREAD_TAG_STRING)
 
+THREAD_AGE_NOTIFY = 3 * 24 * 3600  # 3 days old
+
+
 def regex_match_to_emoji(match, include_name=False):
     emoji = match.group(1)
     full_match = match.group()
@@ -3440,12 +3443,20 @@ class SlackMessage(object):
                 return
             message = self.channel.messages.get(self.submessages[-1])
 
-        if (
-            self.thread_channel
-            and self.thread_channel.active
-            or message.ts <= self.last_read
-            or message.ts <= self.last_notify
-        ):
+        old_ts = SlackTS(str(time.time() - THREAD_AGE_NOTIFY))
+        try:
+            if (not self.subscribed
+                    or not message.ts
+                    or message.ts <= self.last_notify
+                    or message.ts <= old_ts):
+                dbg("Dropping message %s with timestamp %s" %
+                    (message.hash, message.ts),
+                    level=5)
+                return
+        except Exception:
+            dbg("Weird: hash: %s, ts: %s, rhs: %s" %
+                (message.hash, message.ts, old_ts),
+                level=5)
             return
 
         if message.has_mention():
