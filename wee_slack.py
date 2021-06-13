@@ -455,6 +455,8 @@ EMOJI_CHAR_OR_NAME_REGEX_STRING = "({}|{})".format(
 EMOJI_NAME_REGEX = re.compile(EMOJI_NAME_REGEX_STRING)
 EMOJI_CHAR_OR_NAME_REGEX = re.compile(EMOJI_CHAR_OR_NAME_REGEX_STRING)
 
+THREAD_TAG_STRING = r"^.?\[([a-z0-9\-]+)\]"
+THREAD_TAG_REGEX = re.compile(THREAD_TAG_STRING)
 
 def regex_match_to_emoji(match, include_name=False):
     emoji = match.group(1)
@@ -2927,6 +2929,13 @@ class SlackThreadChannel(SlackChannelCommon):
         self.last_line_from = None
         self.new_messages = False
         self.buffer_name_needs_update = False
+
+        text = self.parent_message.message_json["text"]
+        matches = THREAD_TAG_REGEX.findall(text)
+        if matches:
+            tag = matches[0]
+            self.label_short = tag
+            self.label_full = tag + "-" + self.parent_message.hash
 
     @property
     def members(self):
